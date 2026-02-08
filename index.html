@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Visor de Facturas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="importmap">
+  {
+    "imports": {}
+  }
+  </script>
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <div class="topbar-inner">
+      <div class="title-left">Visor de Facturas</div>
+      <div class="title-right">Powered by <span class="itcpo">ITCPO</span></div>
+    </div>
+  </header>
+
+  <div id="emptyState">Seleccione una factura a la derecha o cargue archivos JSON</div>
+
+  <div id="app">
+    <div id="left">
+      <div class="controls">
+        <input id="fileInput" type="file" accept="application/json" multiple />
+        <div class="controls-row">
+          <input id="searchInput" type="search" placeholder="Buscar por receptor..." aria-label="Buscar por receptor" />
+          <button id="clearAll" title="Eliminar todo">Limpiar</button>
+        </div>
+      </div>
+      <ul id="invoicesList" aria-label="Lista de facturas"></ul>
+    </div>
+
+    <div id="right">
+      <div id="detail" hidden>
+        <div class="detailHeader">
+          <div>
+            <div class="small">Emisor</div>
+            <div id="emisorNombre" class="bold"></div>
+            <div id="emisorNit" class="muted"></div>
+            <div id="emisorDireccion" class="muted small"></div>
+            <div id="emisorContacto" class="muted small"></div>
+            <div id="emisorCorreo" class="muted small"></div>
+          </div>
+          <div>
+            <div class="small">Receptor</div>
+            <div id="receptorNombre" class="bold"></div>
+            <div id="receptorDoc" class="muted"></div>
+            <div id="receptorDireccion" class="muted small"></div>
+            <div id="receptorContacto" class="muted small"></div>
+            <div id="receptorCorreo" class="muted small"></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="row">
+            <div><strong>Fecha</strong></div><div id="fecha"></div>
+            <div><strong>Moneda</strong></div><div id="moneda"></div>
+          </div>
+          <div class="row">
+            <div><strong>Número</strong></div><div id="numeroControl"></div>
+            <div><strong>Código</strong></div><div id="codigoGeneracion"></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="small">Items</div>
+          <table id="itemsTable">
+            <thead><tr><th>#</th><th>Descripción</th><th>Cant</th><th>Unidad</th><th>Precio</th><th>Total</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="summary">
+          <div><span>Subtotal</span><span id="subTotal"></span></div>
+          <div><span>Total gravada</span><span id="totalGravada"></span></div>
+          <div><span>IVA</span><span id="totalIva"></span></div>
+          <div><span>Monto total</span><span id="montoTotalOperacion"></span></div>
+          <div><span>Total pagar</span><span id="totalPagar"></span></div>
+          <div class="letters" id="totalLetras"></div>
+        </div>
+
+        <div class="section">
+          <div class="small">Pagos</div>
+          <ul id="pagosList" class="muted small"></ul>
+        </div>
+
+        <div class="section">
+          <div class="small">Firma / Sello recibido</div>
+          <div id="selloRecibido" class="muted small" style="word-break:break-all;"></div>
+        </div>
+
+        <details id="rawBlock">
+          <summary>JSON bruto</summary>
+          <pre id="rawJson"></pre>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modalCard">
+      <div id="modalText"></div>
+      <div class="modalActions">
+        <button id="modalCancel">Cancelar</button>
+        <button id="modalConfirm">Cargar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help floating button -->
+  <button id="helpBtn" class="helpBtn" aria-label="Ayuda">?</button>
+
+  <!-- Help modal -->
+  <div id="helpModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="modalCard">
+      <div id="helpTitle" style="font-weight:700;margin-bottom:8px">Introducción al Visor de Facturas</div>
+      <div id="helpContent" class="muted small" style="line-height:1.4">
+        <p><strong>Qué hace:</strong> Esta aplicación carga archivos JSON con la estructura de facturas (DTE) y los guarda localmente en su navegador; muestra una lista a la izquierda y al seleccionar un registro muestra la factura completa a la derecha.</p>
+        <p><strong>Opciones:</strong></p>
+        <ul>
+          <li>Subir uno o varios archivos JSON usando el control de archivos.</li>
+          <li>Si se detecta una factura duplicada se mostrará una advertencia para sobrescribir o cancelar.</li>
+          <li>Buscar por nombre del receptor, emisor o número usando la caja de búsqueda.</li>
+          <li>Limpiar todo con el botón "Limpiar".</li>
+        </ul>
+        <p><strong>Ejemplo:</strong> Cargue cualquiera de los JSON de muestra incluidos; la lista mostrará fecha, emisor y total; seleccione un ítem para ver detalles, ítems, pagos y el JSON bruto.</p>
+        <p style="margin-top:8px;font-style:italic">Derechos de autor: Carlos Alfredo Castillo Flores - ITCPO - 2026</p>
+      </div>
+      <div class="modalActions">
+        <button id="helpClose">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="siteFooter" role="contentinfo">
+    <div class="siteFooter-inner">© 2026 Carlos Alfredo Castillo Flores - ITCPO. Todos los derechos reservados.</div>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
