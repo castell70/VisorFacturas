@@ -4,6 +4,7 @@ const fileInput = document.getElementById("fileInput");
 const searchInput = document.getElementById("searchInput");
 const invoicesList = document.getElementById("invoicesList");
 const clearAll = document.getElementById("clearAll");
+const exportBtn = document.getElementById("exportBtn");
 const modal = document.getElementById("modal");
 const modalText = document.getElementById("modalText");
 const modalCancel = document.getElementById("modalCancel");
@@ -294,6 +295,41 @@ clearAll.addEventListener("click", async () => {
     emptyState.hidden = false;
   }
 });
+
+// Exportar listado como JSON
+if (exportBtn) {
+  exportBtn.addEventListener("click", () => {
+    const all = store.list();
+    const mapped = all.map(item => {
+      const numero = item.identificacion?.numeroControl ?? item.identificacion?.codigoGeneracion ?? item.identificacion?.numero ?? "";
+      const tipo = item.identificacion?.tipoDte ?? "";
+      const cliente = item.receptor?.nombre ?? item.receptor?.nombreComercial ?? "";
+      const ncr = item.receptor?.nrc ?? item.receptor?.numeroControl ?? "";
+      const nit = item.receptor?.nit ?? item.receptor?.nitReceptor ?? "";
+      const correo = item.receptor?.correo ?? item.receptor?.email ?? "";
+      const totalGravada = item.resumen?.totalGravada ?? item.resumen?.totalGravadaVentas ?? 0;
+      return {
+        tipoDTE: tipo,
+        numeroDTE: numero,
+        cliente,
+        ncr,
+        nit,
+        correo,
+        totalGravada
+      };
+    });
+
+    const blob = new Blob([JSON.stringify(mapped, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "export_dtes.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+}
 
 /* debounce helper */
 function debounce(fn, wait=250){
