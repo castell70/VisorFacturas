@@ -2,6 +2,7 @@ import { store } from "./storage.js";
 
 const fileInput = document.getElementById("fileInput");
 const searchInput = document.getElementById("searchInput");
+const monthFilter = document.getElementById("monthFilter");
 const invoicesList = document.getElementById("invoicesList");
 const clearAll = document.getElementById("clearAll");
 const exportBtn = document.getElementById("exportBtn");
@@ -43,21 +44,34 @@ const ids = {
 let pendingToLoad = null;
 
 function renderList() {
-  const all = store.list();
+  const all = store.list(); // already returned oldest->newest by storage.list
   const q = (searchInput?.value ?? "").trim().toLowerCase();
+  const monthVal = monthFilter?.value ?? "all";
   invoicesList.innerHTML = "";
   if (!all.length) {
     invoicesList.innerHTML = "<li style='padding:12px;color:var(--muted)'>No hay facturas guardadas</li>";
     return;
   }
 
-  const filtered = q ? all.filter(item => {
+  const filtered = all.filter(item => {
+    // text query match
     const r = (item.receptor?.nombre ?? item.receptor?.nombreComercial ?? "").toString().toLowerCase();
     const em = (item.emisor?.nombre ?? "").toString().toLowerCase();
     const num = (item.identificacion?.numeroControl ?? item.identificacion?.codigoGeneracion ?? "").toString().toLowerCase();
-    // match against receptor name primarily, fallback to other fields
-    return r.includes(q) || em.includes(q) || num.includes(q);
-  }) : all;
+    const matchesText = !q || r.includes(q) || em.includes(q) || num.includes(q);
+
+    // month filter
+    if (monthVal && monthVal !== "all") {
+      const m = Number(monthVal);
+      const fechaStr = item.identificacion?.fecEmi ?? item.identificacion?.fecha ?? "";
+      const d = parseDateSafe(fechaStr);
+      if (!d) return false;
+      const itemMonth = d.getMonth() + 1;
+      return matchesText && (itemMonth === m);
+    }
+
+    return matchesText;
+  });
 
   if (!filtered.length) {
     invoicesList.innerHTML = `<li style='padding:12px;color:var(--muted)'>No se encontraron facturas para "${q}"</li>`;
@@ -205,6 +219,21 @@ function unitName(code){
   return map[code] ?? String(code);
 }
 
+// safe parse to Date object (returns null if invalid)
+function parseDateSafe(s){
+  if (!s) return null;
+  const d = new Date(s);
+  if (!isNaN(d)) return d;
+  // try dd/mm/yyyy or dd-mm-yyyy
+  const m = String(s).match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if (m){
+    const day = Number(m[1]), mon = Number(m[2]) - 1, yr = Number(m[3]) < 100 ? 2000 + Number(m[3]) : Number(m[3]);
+    const dd = new Date(yr, mon, day);
+    if (!isNaN(dd)) return dd;
+  }
+  return null;
+}
+
 function formatMoney(v){
   if (v == null) return "";
   return new Intl.NumberFormat(undefined, {style:"currency",currency:store.getDefaultCurrency()||"USD"}).format(v);
@@ -270,14 +299,18 @@ function normalizeParsed(parsed) {
 }
 
 /* Modal helper */
-function showModal(text){
+function showModal(text, danger = false){
   return new Promise(resolve => {
     modalText.textContent = text;
+    // toggle danger style on confirm button when requested
+    modalConfirm.classList.toggle("danger", !!danger);
     modal.classList.remove("hidden");
     function cleanup() {
       modal.classList.add("hidden");
       modalCancel.removeEventListener("click", onCancel);
       modalConfirm.removeEventListener("click", onConfirm);
+      // ensure danger class cleared after closing
+      modalConfirm.classList.remove("danger");
     }
     function onCancel(){ cleanup(); resolve(false); }
     function onConfirm(){ cleanup(); resolve(true); }
@@ -287,7 +320,7 @@ function showModal(text){
 }
 
 clearAll.addEventListener("click", async () => {
-  const ok = await showModal("Eliminar todas las facturas guardadas?");
+  const ok = await showModal("ADVERTENCIA: Esta acción eliminará todas las facturas guardadas. ¿Desea continuar?", true);
   if (ok) {
     store.clear();
     renderList();
@@ -296,26 +329,26 @@ clearAll.addEventListener("click", async () => {
   }
 });
 
-// Exportar listado como JSON
+ // Exportar listado como JSON (incluye emisor/receptor completos, fecha, número, código, sello recibido, total y total con IVA)
 if (exportBtn) {
   exportBtn.addEventListener("click", () => {
     const all = store.list();
     const mapped = all.map(item => {
       const numero = item.identificacion?.numeroControl ?? item.identificacion?.codigoGeneracion ?? item.identificacion?.numero ?? "";
-      const tipo = item.identificacion?.tipoDte ?? "";
-      const cliente = item.receptor?.nombre ?? item.receptor?.nombreComercial ?? "";
-      const ncr = item.receptor?.nrc ?? item.receptor?.numeroControl ?? "";
-      const nit = item.receptor?.nit ?? item.receptor?.nitReceptor ?? "";
-      const correo = item.receptor?.correo ?? item.receptor?.email ?? "";
-      const totalGravada = item.resumen?.totalGravada ?? item.resumen?.totalGravadaVentas ?? 0;
+      const codigo = item.identificacion?.codigoGeneracion ?? item.identificacion?.codigo ?? "";
+      const fecha = item.identificacion?.fecEmi ?? item.identificacion?.fecha ?? "";
+      const total = Number(item.resumen?.montoTotalOperacion ?? item.resumen?.totalPagar ?? 0);
+      const totalIva = Number(item.resumen?.totalIva ?? item.resumen?.iva ?? 0);
+      const totalConIva = total + totalIva;
       return {
-        tipoDTE: tipo,
+        emisor: item.emisor ?? null,
+        receptor: item.receptor ?? null,
+        fecha,
         numeroDTE: numero,
-        cliente,
-        ncr,
-        nit,
-        correo,
-        totalGravada
+        codigoGeneracion: codigo,
+        selloRecibido: item.selloRecibido ?? item.firmaElectronica ?? "",
+        total,
+        totalConIVA: totalConIva
       };
     });
 
@@ -342,6 +375,11 @@ if (searchInput) {
   searchInput.addEventListener("input", debounce(()=> {
     renderList();
   },200));
+}
+if (monthFilter) {
+  monthFilter.addEventListener("change", () => {
+    renderList();
+  });
 }
 
 /* init */

@@ -100,6 +100,16 @@ li.selected{background:linear-gradient(90deg,rgba(11,111,240,0.06),transparent)}
 .modalActions button{padding:8px 10px;border-radius:8px;border:0}
 #modalCancel{background:#f3f4f6}
 #modalConfirm{background:var(--accent);color:white}
+/* danger variant for confirmations that should draw attention */
+#modalConfirm.danger{background:var(--danger);color:white}
+
+/* clear button styled as danger to signal destructive action */
+#clearAll { background: var(--danger); }
+
+/* ensure link with other button styles (keeps rounded look) */
+#clearAll, #modalConfirm.danger { color: #fff; }
+
+/* preserve existing pre styling */
 pre{white-space:pre-wrap;word-wrap:break-word;background:#fafafa;padding:8px;border-radius:6px;border:1px solid #eee;max-height:220px;overflow:auto}
 @media (max-width:720px){
   .topbar-inner{padding:0 8px}

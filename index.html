@@ -27,6 +27,21 @@
         <input id="fileInput" type="file" accept="application/json" multiple />
         <div class="controls-row">
           <input id="searchInput" type="search" placeholder="Buscar por receptor..." aria-label="Buscar por receptor" />
+          <select id="monthFilter" aria-label="Filtrar por mes" title="Filtrar por mes">
+            <option value="all">Todos los meses</option>
+            <option value="1">Enero</option>
+            <option value="2">Febrero</option>
+            <option value="3">Marzo</option>
+            <option value="4">Abril</option>
+            <option value="5">Mayo</option>
+            <option value="6">Junio</option>
+            <option value="7">Julio</option>
+            <option value="8">Agosto</option>
+            <option value="9">Septiembre</option>
+            <option value="10">Octubre</option>
+            <option value="11">Noviembre</option>
+            <option value="12">Diciembre</option>
+          </select>
           <button id="exportBtn" title="Exportar listado">Exportar JSON</button>
           <button id="clearAll" title="Eliminar todo">Limpiar</button>
         </div>
@@ -66,6 +81,11 @@
           </div>
         </div>
 
+        <div class="section" id="selloTopSection" aria-hidden="false">
+          <div class="small">Firma / Sello recibido</div>
+          <div id="selloRecibido" class="muted small" style="word-break:break-all;"></div>
+        </div>
+
         <div class="section">
           <div class="small">Items</div>
           <table id="itemsTable">
@@ -88,10 +108,7 @@
           <ul id="pagosList" class="muted small"></ul>
         </div>
 
-        <div class="section">
-          <div class="small">Firma / Sello recibido</div>
-          <div id="selloRecibido" class="muted small" style="word-break:break-all;"></div>
-        </div>
+
 
         <details id="rawBlock">
           <summary>JSON bruto</summary>
@@ -119,16 +136,18 @@
     <div class="modalCard">
       <div id="helpTitle" style="font-weight:700;margin-bottom:8px">Introducción al Visor de Facturas</div>
       <div id="helpContent" class="muted small" style="line-height:1.4">
-        <p><strong>Qué hace:</strong> Esta aplicación carga archivos JSON con la estructura de facturas (DTE) y los guarda localmente en su navegador; muestra una lista a la izquierda y al seleccionar un registro muestra la factura completa a la derecha.</p>
-        <p><strong>Opciones:</strong></p>
+        <p><strong>Introducción:</strong> Este visor permite cargar, revisar y exportar facturas electrónicas (DTE) en formato JSON directamente desde su navegador, sin enviar datos a servidores externos.</p>
+        <p><strong>Qué hace:</strong> Guarda las facturas localmente, muestra un listado ordenado por fecha (del más antiguo al más reciente) y permite inspeccionar cada documento con sus datos completos, ítems, pagos y el JSON original.</p>
+        <p><strong>Opciones principales:</strong></p>
         <ul>
-          <li>Subir uno o varios archivos JSON usando el control de archivos.</li>
-          <li>Si se detecta una factura duplicada se mostrará una advertencia para sobrescribir o cancelar.</li>
-          <li>Buscar por nombre del receptor, emisor o número usando la caja de búsqueda.</li>
-          <li>Limpiar todo con el botón "Limpiar".</li>
+          <li>Subir uno o varios archivos JSON a la vez (control "Elegir archivo").</li>
+          <li>Buscar facturas por nombre del receptor, emisor o número usando la caja de búsqueda.</li>
+          <li>Filtrar la lista por mes para ver solo las facturas de un periodo.</li>
+          <li>Exportar el listado seleccionado como JSON con emisor, receptor, fecha, número, código, sello recibido y totales.</li>
+          <li>Limpiar todos los datos almacenados con el botón "Limpiar" (se solicita confirmación).</li>
         </ul>
-        <p><strong>Ejemplo:</strong> La aplicación inicia en limpio (no hay JSON incluidos). Para probarla, haga clic en "Elegir archivo" y seleccione uno o varios archivos JSON válidos que contengan la estructura de factura (objeto con "identificacion", "emisor", "receptor", etc.). Tras subirlos, la lista a la izquierda mostrará cada factura con fecha, emisor y total; haga clic en un elemento para ver los detalles, ítems, pagos y el JSON bruto en la sección derecha.</p>
-        <p style="margin-top:8px;font-style:italic">Derechos de autor: Carlos Alfredo Castillo Flores - ITCPO - 2026</p>
+        <p><strong>Ejemplo de uso (rápido y claro):</strong> 1) Haga clic en "Elegir archivo" y seleccione un archivo JSON que contenga una factura (objeto con "identificacion", "emisor", "receptor" y "resumen"). 2) La factura aparecerá en la lista izquierda con fecha y total; use el filtro de mes si desea limitar la vista. 3) Haga clic en la factura para ver los detalles a la derecha (ítems, pagos, sello recibido y el JSON bruto). 4) Use "Exportar JSON" para descargar un resumen con los campos importantes o "Limpiar" para borrar todo (aparecerá una advertencia antes de eliminar).</p>
+        <p style="margin-top:8px;font-style:italic">Derechos de autor: Carlos Alfredo Castillo Flores — ITCPO — 2026</p>
       </div>
       <div class="modalActions">
         <button id="helpClose">Cerrar</button>

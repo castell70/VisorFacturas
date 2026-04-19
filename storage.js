@@ -44,9 +44,30 @@ export const store = (function(){
         out.push(o);
       } catch(e){}
     }
-    // sort by date desc
-    out.sort((a,b)=> (b._savedAt||"").localeCompare(a._savedAt||""));
+    // sort by invoice emission date: oldest -> newest
+    out.sort((a,b)=>{
+      const da = parseDate(a.identificacion?.fecEmi ?? a.identificacion?.fecha ?? a._savedAt);
+      const db = parseDate(b.identificacion?.fecEmi ?? b.identificacion?.fecha ?? b._savedAt);
+      return (da || 0) - (db || 0);
+    });
     return out;
+  }
+
+  function parseDate(s){
+    if (!s) return 0;
+    // if already a Date or timestamp
+    if (typeof s === "number") return s;
+    // try ISO parse
+    const d = new Date(s);
+    if (!isNaN(d)) return d.getTime();
+    // try common dd/mm/yyyy or dd-mm-yyyy
+    const m = s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+    if (m){
+      const day = Number(m[1]), mon = Number(m[2]) - 1, yr = Number(m[3]) < 100 ? 2000 + Number(m[3]) : Number(m[3]);
+      const dd = new Date(yr, mon, day);
+      if (!isNaN(dd)) return dd.getTime();
+    }
+    return 0;
   }
 
   function clear(){
