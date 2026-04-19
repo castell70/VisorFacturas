@@ -32,6 +32,7 @@ const ids = {
   itemsTableBody: document.querySelector("#itemsTable tbody"),
   subTotal: document.getElementById("subTotal"),
   totalGravada: document.getElementById("totalGravada"),
+  totalDescu: document.getElementById("totalDescu"),
   totalIva: document.getElementById("totalIva"),
   montoTotalOperacion: document.getElementById("montoTotalOperacion"),
   totalPagar: document.getElementById("totalPagar"),
@@ -151,42 +152,58 @@ function selectKey(key) {
     ids.itemsTableBody.appendChild(tr);
   });
 
-  // financial summary
-  ids.subTotal.textContent = formatMoney(obj.resumen?.subTotal ?? obj.resumen?.subTotalVentas ?? 0);
-  ids.totalGravada.textContent = formatMoney(obj.resumen?.totalGravada ?? 0);
+  // financial summary — reordered: Total gravada, Descuento, Subtotal, IVA, Monto total, Total pagar
+  const totalGravadaVal = Number(obj.resumen?.totalGravada ?? 0);
+  const subtotalVal = Number(obj.resumen?.subTotal ?? obj.resumen?.subTotalVentas ?? 0);
+  const descuentoVal = Number(obj.resumen?.totalDescu ?? obj.resumen?.descuento ?? 0);
+  ids.totalGravada.textContent = formatMoney(totalGravadaVal);
+  // show/hide discount row
+  if (ids.totalDescu) {
+    if (descuentoVal && descuentoVal !== 0) {
+      ids.totalDescu.textContent = formatMoney(descuentoVal);
+      const discountRow = document.getElementById("discountRow");
+      if (discountRow) discountRow.style.display = "flex";
+    } else {
+      ids.totalDescu.textContent = "";
+      const discountRow = document.getElementById("discountRow");
+      if (discountRow) discountRow.style.display = "none";
+    }
+  }
+  ids.subTotal.textContent = formatMoney(subtotalVal);
+
   // IVA handling:
   // - For DTE tipo "01" IVA is considered included and should not be shown.
   // - For DTE tipo "03" compute IVA from items (use ivaItem if provided, otherwise apply fallback rate).
   const tipoDte = String(obj.identificacion?.tipoDte ?? "");
-  function computeIvaFromItems(items){
-    if (!items || !items.length) return 0;
-    // Sum explicit ivaItem values when present, else apply fallback rate to ventaGravada
-    const fallbackRate = 0.13; // default VAT rate used when ivaItem not provided
-    let sum = 0;
-    for (const it of items) {
-      if (it == null) continue;
-      if (typeof it.ivaItem === "number") {
-        sum += Number(it.ivaItem);
-      } else {
-        const base = Number(it.ventaGravada ?? (it.precioUni * (it.cantidad ?? 1)) ?? 0);
-        sum += base * fallbackRate;
-      }
-    }
-    return sum;
+
+  // helper: safely parse numeric-like values, return null if not a valid number
+  function parseNumber(v){
+    if (v == null) return null;
+    if (typeof v === "number") return v;
+    const n = Number(String(v).replace(/[^0-9\.\-eE]+/g,""));
+    return Number.isFinite(n) ? n : null;
+  }
+
+  // compute IVA based on subtotal when explicit IVA is not provided
+  function computeIvaFromSubtotal(subtotal){
+    const rate = 0.13;
+    const s = Number(subtotal) || 0;
+    // round to 2 decimals
+    return Math.round((s * rate) * 100) / 100;
   }
 
   let ivaShown = "";
   if (tipoDte === "03") {
-    const explicitIva = obj.resumen?.totalIva ?? obj.resumen?.iva ?? null;
-    const items = obj.cuerpoDocumento ?? obj.cuerpoDocument ?? [];
-    const computed = computeIvaFromItems(items);
-    const ivaValue = explicitIva != null ? Number(explicitIva) : computed;
-    ivaShown = formatMoney(ivaValue || 0);
+    const explicitIvaRaw = obj.resumen?.totalIva ?? obj.resumen?.iva ?? null;
+    const explicitIva = parseNumber(explicitIvaRaw);
+    // prefer explicit IVA; otherwise compute as subtotal * rate
+    const ivaValue = explicitIva != null ? explicitIva : computeIvaFromSubtotal(subtotalVal);
+    ivaShown = formatMoney(ivaValue ?? 0);
   } else {
-    // hide IVA for tipo 01 and other types unless explicit and not tipo 01 is desired
     ivaShown = "";
   }
   ids.totalIva.textContent = ivaShown;
+
   ids.montoTotalOperacion.textContent = formatMoney(obj.resumen?.montoTotalOperacion ?? 0);
   ids.totalPagar.textContent = formatMoney(obj.resumen?.totalPagar ?? obj.resumen?.montoTotalOperacion ?? 0);
   ids.totalLetras.textContent = obj.resumen?.totalLetras ?? "";
@@ -333,13 +350,27 @@ clearAll.addEventListener("click", async () => {
 if (exportBtn) {
   exportBtn.addEventListener("click", () => {
     const all = store.list();
+    // produce export ensuring numeric IVA is parsed or computed from items when missing
+    function parseNumber(v){
+      if (v == null) return null;
+      if (typeof v === "number") return v;
+      const n = Number(String(v).replace(/[^0-9\.\-eE]+/g,""));
+      return Number.isFinite(n) ? n : null;
+    }
+    function computeIvaFromSubtotalValue(item){
+      const rate = 0.13;
+      const sub = parseNumber(item.resumen?.subTotal ?? item.resumen?.subTotalVentas ?? 0) || 0;
+      return Math.round((sub * rate) * 100) / 100;
+    }
+
     const mapped = all.map(item => {
       const numero = item.identificacion?.numeroControl ?? item.identificacion?.codigoGeneracion ?? item.identificacion?.numero ?? "";
       const codigo = item.identificacion?.codigoGeneracion ?? item.identificacion?.codigo ?? "";
       const fecha = item.identificacion?.fecEmi ?? item.identificacion?.fecha ?? "";
-      const total = Number(item.resumen?.montoTotalOperacion ?? item.resumen?.totalPagar ?? 0);
-      const totalIva = Number(item.resumen?.totalIva ?? item.resumen?.iva ?? 0);
-      const totalConIva = total + totalIva;
+      const total = parseNumber(item.resumen?.montoTotalOperacion ?? item.resumen?.totalPagar) ?? 0;
+      const explicitIva = parseNumber(item.resumen?.totalIva ?? item.resumen?.iva);
+      const totalIva = explicitIva != null ? explicitIva : computeIvaFromSubtotalValue(item);
+      const totalConIva = total + (totalIva ?? 0);
       return {
         emisor: item.emisor ?? null,
         receptor: item.receptor ?? null,
@@ -348,7 +379,8 @@ if (exportBtn) {
         codigoGeneracion: codigo,
         selloRecibido: item.selloRecibido ?? item.firmaElectronica ?? "",
         total,
-        totalConIVA: totalConIva
+        totalConIVA: totalConIva,
+        totalIva: totalIva ?? 0
       };
     });
 
